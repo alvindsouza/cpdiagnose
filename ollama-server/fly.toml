@@ -1,0 +1,30 @@
+app = "cpdiagnose-ollama"
+primary_region = "sin"
+
+[build]
+  image = "ollama/ollama:latest"
+
+[env]
+  OLLAMA_KEEP_ALIVE = "24h"
+  OLLAMA_HOST = "0.0.0.0"
+
+[[services]]
+  internal_port = 11434
+  protocol = "tcp"
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+
+[mounts]
+  source = "ollama_models"
+  destination = "/root/.ollama"
+
+[vm]
+  memory = "8gb"
+  cpu_kind = "shared"
+  cpus = 4
