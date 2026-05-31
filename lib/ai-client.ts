@@ -1,9 +1,12 @@
 import { Ollama } from 'ollama';
 import OpenAI from 'openai';
+import Groq from 'groq-sdk';
 
-const MODE = process.env.OLLAMA_MODE || 'local';
+const MODE = (process.env.OLLAMA_MODE || 'local').trim().toLowerCase();
 const MODEL = process.env.OLLAMA_MODEL || 'codellama:7b';
 const TOGETHER_CHAT_MODEL = 'meta-llama/Llama-3.1-70B-Instruct-Turbo';
+const GROQ_CHAT_MODEL =
+  process.env.GROQ_CHAT_MODEL || 'llama-3.1-70b-versatile';
 
 // ── 1. Client factory ─────────────────────────────────────
 
@@ -33,6 +36,18 @@ function getTogetherClient(): OpenAI {
 // ── 2. runInference ─────────────────────────────────────────
 
 async function runInference(prompt: string): Promise<string> {
+  // Free cloud option — same Groq key as prereqs (no Together deposit needed)
+  if (MODE === 'groq') {
+    const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
+    const response = await client.chat.completions.create({
+      model: GROQ_CHAT_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 2048,
+      temperature: 0.1,
+    });
+    return response.choices[0]?.message?.content ?? '';
+  }
+
   if (MODE === 'together') {
     const client = getTogetherClient();
     const response = await client.chat.completions.create({
@@ -211,6 +226,14 @@ export async function checkOllamaHealth(): Promise<{
   mode: string;
 }> {
   try {
+    if (MODE === 'groq') {
+      return {
+        ok: !!process.env.GROQ_API_KEY,
+        model: GROQ_CHAT_MODEL,
+        mode: 'groq',
+      };
+    }
+
     if (MODE === 'together') {
       return {
         ok: !!process.env.TOGETHER_API_KEY,
